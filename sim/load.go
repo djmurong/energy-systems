@@ -25,9 +25,9 @@ func RunLoad(ticks <-chan Tick, cfg SimConfig) <-chan float64 {
 // Slightly higher in evening hours when lights and entertainment are on.
 func baselineLoad(hour float64) float64 {
 	if hour >= 18.0 || hour < 6.0 {
-		return 1.2 // evening/night: more lighting
+		return 1.0 // evening/night: more lighting
 	}
-	return 0.8
+	return 0.5
 }
 
 // hvacLoad models air conditioning (summer) or heating (non-summer) demand.
@@ -37,7 +37,7 @@ func hvacLoad(hour float64, season string) float64 {
 		// AC load ramps from noon, peaks 3–6 PM, tapers by 9 PM.
 		if hour >= 12.0 && hour < 21.0 {
 			// Peak at 16:00
-			peak := 4.0
+			peak := 3.5
 			dist := (hour - 16.0)
 			// Gaussian-ish shape
 			load := peak * gaussFast(dist, 2.5)
@@ -67,10 +67,10 @@ func applianceSpike(rng *rand.Rand) float64 {
 	switch {
 	case r < 0.005: // ~0.5% chance per tick → EV charger (7.2 kW)
 		return 7.2
-	case r < 0.015: // ~1% → oven (2.5 kW)
-		return 2.5
-	case r < 0.025: // ~1% → dryer (5.0 kW)
-		return 5.0
+	case r < 0.015: // ~1% → oven (3.0 kW)
+		return 3.0
+	case r < 0.025: // ~1% → dryer (5.5 kW)
+		return 5.5
 	default:
 		return 0
 	}

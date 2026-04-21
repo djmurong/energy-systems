@@ -93,7 +93,7 @@ func runSimulation(cfg sim.SimConfig) (sim.Summary, error) {
 	solarCh := sim.RunSolar(solarTicks, cfg)
 	loadCh := sim.RunLoad(loadTicks, cfg)
 
-	logger := &sim.Logger{PolicyName: cfg.PolicyName}
+	logger := &sim.Logger{PolicyName: cfg.PolicyName, Season: cfg.Season}
 	bat := sim.NewBatteryState(cfg.Battery)
 	var cumCost float64
 

@@ -11,6 +11,7 @@ import (
 type Logger struct {
 	Results    []TickResult
 	PolicyName string
+	Season     string
 }
 
 // Record appends a result to the log.
@@ -18,12 +19,15 @@ func (l *Logger) Record(r TickResult) {
 	l.Results = append(l.Results, r)
 }
 
-// WriteCSV writes all results to a CSV file in the given directory.
+// WriteCSV writes all results to a CSV file. The file is placed in a
+// per-season subdirectory (<dir>/<season>/) and the season is embedded in
+// the filename so summer and non-summer runs don't overwrite each other.
 func (l *Logger) WriteCSV(dir string) (string, error) {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	seasonDir := filepath.Join(dir, l.Season)
+	if err := os.MkdirAll(seasonDir, 0o755); err != nil {
 		return "", err
 	}
-	path := filepath.Join(dir, l.PolicyName+".csv")
+	path := filepath.Join(seasonDir, l.PolicyName+"-"+l.Season+".csv")
 	f, err := os.Create(path)
 	if err != nil {
 		return "", err

@@ -3,8 +3,14 @@
 Generate comparison charts from Electrotech Energy Flow simulation CSV output.
 
 Usage:
-    python scripts/plot.py results/          # default output directory
-    python scripts/plot.py results/ --save   # save PNGs instead of showing
+    python scripts/plot.py results/summer           # show plots for summer run
+    python scripts/plot.py results/summer --save    # save PNGs to results/plots/summer/
+    python scripts/plot.py results/nonsummer --save # save PNGs to results/plots/nonsummer/
+
+If CSV filenames end in "-summer" or "-nonsummer" (as written by the Go sim),
+the season suffix is stripped for policy identification and saved plots are
+routed to a sibling plots/<season>/ directory. Otherwise the legacy layout
+(plots placed under <results_dir>/plots/) is preserved.
 """
 
 import sys
@@ -28,14 +34,31 @@ POLICY_LABELS = {
 }
 
 
+SEASONS = ("summer", "nonsummer")
+
+
 def load_data(results_dir):
-    """Load all CSV files from the results directory."""
+    """Load all CSV files from the results directory.
+
+    Returns (frames, season) where season is the detected season suffix (e.g.
+    "summer" or "nonsummer") if all CSVs share one, otherwise None. Keys in
+    frames are the policy names with any "-<season>" suffix stripped so they
+    match POLICY_COLORS / POLICY_LABELS.
+    """
     frames = {}
+    seasons_found = set()
     for path in sorted(glob.glob(os.path.join(results_dir, "*.csv"))):
         name = os.path.splitext(os.path.basename(path))[0]
-        df = pd.read_csv(path)
-        frames[name] = df
-    return frames
+        for s in SEASONS:
+            suffix = "-" + s
+            if name.endswith(suffix):
+                seasons_found.add(s)
+                name = name[: -len(suffix)]
+                break
+        frames[name] = pd.read_csv(path)
+
+    season = next(iter(seasons_found)) if len(seasons_found) == 1 else None
+    return frames, season
 
 
 def plot_energy_flows(frames, save_dir=None):
@@ -238,14 +261,24 @@ def main():
 
     results_dir = sys.argv[1]
     save = "--save" in sys.argv
-    save_dir = os.path.join(results_dir, "plots") if save else None
 
-    frames = load_data(results_dir)
+    frames, season = load_data(results_dir)
     if not frames:
         print(f"No CSV files found in {results_dir}")
         sys.exit(1)
 
-    print(f"Loaded {len(frames)} policy results: {', '.join(frames.keys())}")
+    if save:
+        if season is not None:
+            # New layout: CSVs live in <root>/<season>/, plots go to <root>/plots/<season>/.
+            parent = os.path.dirname(os.path.abspath(results_dir)) or "."
+            save_dir = os.path.join(parent, "plots", season)
+        else:
+            save_dir = os.path.join(results_dir, "plots")
+    else:
+        save_dir = None
+
+    season_str = f" (season: {season})" if season else ""
+    print(f"Loaded {len(frames)} policy results{season_str}: {', '.join(frames.keys())}")
 
     # Infer step duration from first CSV
     first_df = list(frames.values())[0]
